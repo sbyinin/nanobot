@@ -100,6 +100,11 @@ CONFIG_CACHE_MAX_RETRY_S = 60 * 60
 # Default long-poll timeout; overridden by server via longpolling_timeout_ms.
 DEFAULT_LONG_POLL_TIMEOUT_S = 35
 
+# CDN upload timeout for large media files (images, videos, etc.)
+# Large files may take longer to upload; this timeout is separate from
+# long-poll timeout to avoid failures on big media.
+CDN_UPLOAD_TIMEOUT_S = 180
+
 # Media-type codes for getuploadurl  (1=image, 2=video, 3=file, 4=voice)
 UPLOAD_MEDIA_IMAGE = 1
 UPLOAD_MEDIA_VIDEO = 2
@@ -1409,10 +1414,13 @@ class WeixinChannel(BaseChannel):
                 f"&filekey={quote(file_key)}"
             )
 
+        # Use extended timeout for CDN upload (large files may take time)
+        cdn_timeout = httpx.Timeout(CDN_UPLOAD_TIMEOUT_S, connect=30)
         cdn_resp = await self._client.post(
             cdn_upload_url,
             content=encrypted_data,
             headers={"Content-Type": "application/octet-stream"},
+            timeout=cdn_timeout,
         )
         cdn_resp.raise_for_status()
 
